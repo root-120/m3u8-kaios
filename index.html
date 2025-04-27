@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple M3U Player for KaiOS</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; padding: 10px; }
+        h1 { font-size: 20px; text-align: center; }
+        select, button { width: 100%; padding: 8px; margin-top: 10px; }
+        #video { width: 100%; height: 200px; background: black; margin-top: 10px; }
+        #channelList { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>📺 M3U Playlist Player</h1>
+    <input type="file" id="m3uFile" accept=".m3u, .m3u8">
+    <select id="categorySelect"></select>
+    <select id="channelSelect"></select>
+    <button onclick="playChannel()">Play</button>
+    <video id="video" controls></video>
+
+    <script>
+        let allChannels = {};
+
+        document.getElementById('m3uFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                parseM3U(event.target.result);
+            };
+            reader.readAsText(file);
+        });
+
+        function parseM3U(text) {
+            allChannels = {};
+            const lines = text.split('\n');
+            let currentTitle = "", currentGroup = "", currentUrl = "";
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.startsWith("#EXTINF:")) {
+                    const groupMatch = line.match(/group-title="(.*?)"/);
+                    currentGroup = groupMatch ? groupMatch[1] : "Other";
+                    const titleMatch = line.match(/,(.*)/);
+                    currentTitle = titleMatch ? titleMatch[1] : "No Title";
+                } else if (line.startsWith("http")) {
+                    currentUrl = line;
+                    if (!allChannels[currentGroup]) allChannels[currentGroup] = [];
+                    allChannels[currentGroup].push({ title: currentTitle, url: currentUrl });
+                }
+            });
+            populateCategories();
+        }
+
+        function populateCategories() {
+            const categorySelect = document.getElementById('categorySelect');
+            categorySelect.innerHTML = '';
+            for (let group in allChannels) {
+                let option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                categorySelect.appendChild(option);
+            }
+            categorySelect.onchange = populateChannels;
+            populateChannels();
+        }
+
+        function populateChannels() {
+            const channelSelect = document.getElementById('channelSelect');
+            const category = document.getElementById('categorySelect').value;
+            channelSelect.innerHTML = '';
+            allChannels[category].forEach((channel, index) => {
+                let option = document.createElement('option');
+                option.value = channel.url;
+                option.textContent = channel.title;
+                channelSelect.appendChild(option);
+            });
+        }
+
+        function playChannel() {
+            const url = document.getElementById('channelSelect').value;
+            const video = document.getElementById('video');
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            }
+        }
+    </script>
+</body>
+</html>
