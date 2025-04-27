@@ -15,7 +15,7 @@
 </head>
 <body>
     <h1>📺 M3U Playlist Player</h1>
-    <input type="file" id="m3uFile" accept=".m3u, .m3u8">
+    <input type="file" id="m3uFile" accept=".m3u, .m3u8" style="display:none;">
     <select id="categorySelect"></select>
     <select id="channelSelect"></select>
     <button onclick="playChannel()">Play</button>
@@ -24,14 +24,12 @@
     <script>
         let allChannels = {};
 
-        document.getElementById('m3uFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                parseM3U(event.target.result);
-            };
-            reader.readAsText(file);
-        });
+        // Automatically load play.m3u8 from the same directory (or change URL if hosted elsewhere)
+        const m3uFileUrl = 'play.m3u8';
+
+        fetch(m3uFileUrl)
+            .then(response => response.text())
+            .then(text => parseM3U(text));
 
         function parseM3U(text) {
             allChannels = {};
